@@ -1,0 +1,84 @@
+
+WINDOWS
+--------
+
+// The in_addr structure represents an IPv4 Internet address.
+// See in6_addr for IPv6 alternative.
+struct in_addr {
+    
+  union {
+      
+    // An IPv4 address formatted as four u_chars.
+    struct {
+      u_char s_b1;
+      u_char s_b2;
+      u_char s_b3;
+      u_char s_b4;
+    } S_un_b;
+    
+    // An IPv4 address formatted as two u_shorts.
+    struct {
+      u_short s_w1;
+      u_short s_w2;
+    } S_un_w;
+    
+    // An IPv4 address formatted as a u_long.
+    u_long S_addr;
+    
+  } S_un;
+  
+};
+
+
+// Raw data container for types such as sockaddr_in and ...
+// The sockaddr structure varies depending on the protocol selected.
+struct sockaddr {
+    ushort  sa_family;
+    char    sa_data[14];
+};
+
+// 
+struct sockaddr_in {
+    short   sin_family;
+    u_short sin_port;
+    struct  in_addr sin_addr;
+    char    sin_zero[8];
+};
+
+The addrinfo structure (linked list) is used by the getaddrinfo function to hold host address information.
+typedef struct addrinfo {
+    
+  // Flags that indicate options used in the getaddrinfo function.
+  int               ai_flags; 
+  // The address family.
+  int               ai_family;
+  // The socket type.
+  int               ai_socktype;
+  // The protocol type.
+  int               ai_protocol;
+  // The length, in bytes, of the buffer pointed to by the ai_addr member.
+  size_t            ai_addrlen;
+  // The canonical name for the host.
+  char*             ai_canonname;
+  // A pointer to a sockaddr structure.
+  struct sockaddr*  ai_addr;
+  // A pointer to the next structure in a linked list.
+  struct addrinfo*  ai_next;
+
+} ADDRINFOA, *PADDRINFOA;
+
+// The hostent structure is used by functions to store information about
+// a given host, such as host name, IPv4 address, and so forth.
+// An application should never attempt to modify this structure or to free
+// any of its components. Furthermore, only one copy of the hostent structure
+// is allocated per thread, and an application should therefore copy any
+// information that it needs before issuing any other Windows Sockets API calls.
+typedef struct hostent {
+  char*   h_name;
+  char**  h_aliases;
+  short   h_addrtype;
+  short   h_length;
+  char**  h_addr_list;
+} HOSTENT, *PHOSTENT, *LPHOSTENT;
+
+
