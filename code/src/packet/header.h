@@ -6,8 +6,6 @@
 typedef struct http_header {
     char head[MAX_HEADER_LENGTH + 1];
     char body[MAX_HEADER_LENGTH + 1];
-    u32 head_len;
-    u32 body_len;
 } http_header;
 
 typedef struct header_group {

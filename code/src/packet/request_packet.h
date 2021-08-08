@@ -13,7 +13,7 @@ typedef enum request_state {
 
 typedef struct request_packet {
     const char* http_method;
-    char request_path[MAX_REQUEST_PATH_LENGTH];
+    char request_path[MAX_REQUEST_PATH_LENGTH + 1];
     const char* http_version;
     header_group headers;
     char* content;

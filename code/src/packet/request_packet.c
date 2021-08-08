@@ -43,9 +43,7 @@ const char* __find_version(char* buffer){
 request_state __extract_method_line(char* data, u32 size, request_packet* packet, u32* i){
     
     // METHOD - PATH - VERSION
-    char con[3][MAX_REQUEST_PATH_LENGTH] = {{0}};
-    //TODO: Need to make sure you don't read over the array size.
-    //TODO: Need to make sure not reading over parameter 'size'.
+    char con[3][MAX_REQUEST_PATH_LENGTH + 1] = {{0}};
     
     u32 data_pos = *i;
     u32 arr_index = 0;
@@ -58,15 +56,31 @@ request_state __extract_method_line(char* data, u32 size, request_packet* packet
         con[arr_index][arr_pos] = c;
         arr_pos++;
         
-        if(c == ' ' || c == '\r'){
+        switch(c){
+            
+            case '\r':
+            if(arr_index != 2 || data[data_pos] != '\n'){
+                return MALFORMED;
+            }
+            data_pos++;
+            // Fall through
+            
+            case ' ':
             con[arr_index][arr_pos - 1] = '\0';
             arr_index++;
             arr_pos = 0;
+            break;
+            
+            case '\n':
+            return MALFORMED;
         }
+        
+        // Check for out of bounds access.
+        if(!(data_pos != size && arr_pos != MAX_REQUEST_PATH_LENGTH + 2)){
+            return MALFORMED;
+        }
+        
     }
-    
-    // TODO: Assuming next char is '\n' and not checking.
-    data_pos++;
     
     const char* method = __find_method(con[0]);
     const char* version = __find_version(con[2]);
@@ -83,16 +97,13 @@ request_state __extract_method_line(char* data, u32 size, request_packet* packet
 }
 request_state __extract_headers(char* data, u32 size, request_packet* packet, u32* i){
     
-    //TODO: Need to make sure you don't read over the array size.
-    //TODO: Need to make sure not reading over parameter size.
-    
     u32 data_pos = *i;
     bool complete = false;
     u32 header_index = 0;
     
     while(!complete){
         
-        char con[2][MAX_HEADER_LENGTH] = {0};
+        char con[2][MAX_HEADER_LENGTH + 1] = {0};
         bool delimiter_found = false;
         u32 arr_index = 0;
         u32 arr_pos = 0;
@@ -104,23 +115,54 @@ request_state __extract_headers(char* data, u32 size, request_packet* packet, u3
             con[arr_index][arr_pos] = c;
             arr_pos++;
             
-            // TODO: Assuming first ':' is the delimiter. Check specification.
-            if((c == ':' && !delimiter_found) || c == '\r'){
+            switch(c){
+                
+                case ':':
+                if(delimiter_found){
+                    break;
+                }
+                if(data[data_pos] != ' '){
+                    return MALFORMED;
+                }
                 delimiter_found = true;
                 con[arr_index][arr_pos - 1] = '\0';
                 data_pos++;
                 arr_index++;
                 arr_pos = 0;
+                break;
+                
+                case '\r':
+                if(arr_index != 1 || data[data_pos] != '\n'){
+                    return MALFORMED;
+                }
+                con[arr_index][arr_pos - 1] = '\0';
+                data_pos++;
+                arr_index++;
+                break;
+                
+                case '\n':
+                return MALFORMED;
             }
+            
+            // Check for out of bounds access.
+            if(!(data_pos != size && arr_pos != MAX_HEADER_LENGTH + 2)){
+                return MALFORMED;
+            }
+            
         }
         
         memcpy(packet->headers.headers[header_index].head, con[0], MAX_HEADER_LENGTH);
         memcpy(packet->headers.headers[header_index].body, con[1], MAX_HEADER_LENGTH);
+        packet->headers.count++;
         header_index++;
         
-        // TODO: Assuming next char is '\n' and not checking.
+        // A carriage return here means we're done with headers.
         if(data[data_pos] == '\r'){
-            data_pos += 2;
+            data_pos++;
+            if(data_pos == size || data[data_pos] != '\n'){
+                return MALFORMED;
+            }
+            data_pos++;
             complete = true;
         }
         if(header_index == MAX_HEADER_COUNT){
