@@ -8,9 +8,9 @@
 #include "defines.h"
 #include "platform.h"
 #include "log.h"
+#include "packet/request_packet.h"
+
 #include "file.h"
-#include "stopwatch.h"
-#include "memory_block.h"
 
 const u32 buf_len = 2048;
 
@@ -60,24 +60,42 @@ void read_handler(read_info* info){
         return;
     }
     
-    // Create packet from data.
+    //NOTE: Need to set packet using {0} so the state is FRESH.
+    request_packet p = { 0 };
+    request_state s = request_parse(info->buffer, info->bytes_read, &p);
     
-    //while not complete
-    //  read more
-    //  process more
+    while(s == INCOMPLETE){
+        platform_read(info->ccon_handle, info->buffer, info->buffer_size);
+        s = request_parse(info->buffer, info->bytes_read, &p);
+    }
     
+    if(s == MALFORMED){
+        // Send error.
+    }
+    if(s == COMPLETE){
+        // Handle packet.
+        return;
+    }
+    if(s == INCOMPLETE){
+        
+    }
     
-    // Begin reading again async.
-    // Processing complete.
-    // Do stuff with complete packet.
+    // COMPLETE OR NEED_MORE_CONTENT
     
+    /*
+    while(s.pstate != COMPLETE){
+        // WARNING: The byte after bytes_read is not guaranteed to be '\0'.
+        u32 bytes_read = platform_read(info->ccon_handle, info->buffer, info->buffer_size);
+        request_parse(info->buffer, bytes_read, &p, &s);
+    }
+    */
     
     LogInfo("Bytes read: %u", info->bytes_read);
     LogInfo("\n%s", info->buffer);
     
     if(info->bytes_read < buf_len - 1){
         char* copy = NULL;
-        file_copy_range(&copy, "C:\\Users\\Paul\\Desktop\\ServerStuff\\entryTest.html", 0, -1);
+        file_copy_range(&copy, "C:\\Users\\Paul\\Documents\\_Projects\\rolandquest.com\\html\\entryTest.html", 0, -1);
         
         char* toSend = construct(copy);
         platform_send(info->ccon_handle, toSend, strlen(toSend));
@@ -85,10 +103,51 @@ void read_handler(read_info* info){
         free(copy);
     }
     
-    platform_async_read(info->ccon_handle, 2048, read_handler);
 }
 int main(){
     
+    platform_startup();
+    log_startup();
+    
+    pcon_handle* server;
+    
+    if(!platform_create_server(&server, 8888, 3)){
+        LogFatal("Could not initialize server!");
+        return 1;
+    }
+    
+    char addrstr_buffer[256];
+    platform_address_to_string(server, addrstr_buffer, 256);
+    LogInfo("Listening on socket: %s", addrstr_buffer);
+    
+    bool shutdown_server = false;
+    do{
+        pcon_handle* client;
+        
+        LogTrace("Accepting on socket...");
+        if(platform_accept(server, &client)){
+            
+            onClientConnect(client);
+            
+            //Currently, no clean way to free(client).
+            //Handled in my 'platform_async_read' handler for now.
+            platform_async_read(client, 2048, read_handler, 4000);
+        }
+        else{
+            LogInfo("Accept failed?");
+        }
+        
+    }while(!shutdown_server);
+    
+    pcon_destroy(server);
+    platform_shutdown();
+
+    return 0;
+}
+
+
+/*
+
     const u64 runs = 100000000;
     const u64 chunk_size = 2048;
     const u64 chunk_count = 2;
@@ -134,43 +193,4 @@ int main(){
     
     mb_destroy(block);
     return 0;
-    
-    
-    platform_startup();
-    log_startup();
-    
-    pcon_handle* server;
-    
-    if(!platform_create_server(&server, 8888, 3)){
-        LogFatal("Could not initialize server!");
-        return 1;
-    }
-    
-    char addrstr_buffer[256];
-    platform_address_to_string(server, addrstr_buffer, 256);
-    LogInfo("Listening on socket: %s", addrstr_buffer);
-    
-    bool shutdown_server = false;
-    do{
-        pcon_handle* client;
-        
-        LogTrace("Accepting on socket...");
-        if(platform_accept(server, &client)){
-            
-            onClientConnect(client);
-            
-            //Currently, no clean way to free(client).
-            //Handled in my 'platform_async_read' handler for now.
-            platform_async_read(client, 2048, read_handler);
-        }
-        else{
-            LogInfo("Accept failed?");
-        }
-        
-    }while(!shutdown_server);
-    
-    pcon_destroy(server);
-    platform_shutdown();
-
-    return 0;
-}
+    */

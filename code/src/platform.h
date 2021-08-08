@@ -2,6 +2,9 @@
 
 #include "defines.h"
 
+//TODO: Potentially break this file up.
+//TODO: Seems to be a lot of functionality in a single header.
+
 // Platform detection
 #if defined(_WIN64)
 #define PLATFORM_WINDOWS
@@ -58,6 +61,8 @@ void platform_listen(pcon_handle* con, u32 backlog);
 bool platform_accept(pcon_handle* scon_handle, pcon_handle** ccon_handle);
 // Sends data through given socket.
 void platform_send(pcon_handle* con, const char* msg, i32 msg_len);
+// Determines the status of one or more sockets, waiting if necessary, to perform synchronous I/O.
+int platform_readable(pcon_handle* con, u32 timeout);
 // Reads data from given socket.
 u32 platform_read(pcon_handle* con, char* buf, u32 buf_len);
 // Closes socket and calls 'free' on handle.
@@ -92,6 +97,7 @@ bool platform_async_accept(pcon_handle* scon_handle, void (*handler)(accept_info
 typedef struct read_info {
     pcon_handle* ccon_handle;
     char* buffer;
+    u32 buffer_size;
     u32 bytes_read;
     bool eof;
     bool force_closed;
@@ -100,6 +106,6 @@ typedef struct read_info {
 // Calls 'read' on a newly created thread.
 // 'handler' is called when 'read' returns.
 // TOOD: Pass error info to handler.
-bool platform_async_read(pcon_handle* ccon_handle, u32 bytes_to_read, void (*handler)(read_info* info));
+bool platform_async_read(pcon_handle* ccon_handle, u32 bytes_to_read, void (*handler)(read_info* info), u32 timeout);
 
 

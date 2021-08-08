@@ -129,7 +129,21 @@ bool platform_accept(pcon_handle* scon_handle, pcon_handle** ccon_handle) {
 void platform_send(pcon_handle* con, const char* msg, i32 msg_len) {
     send(con->sock, msg, msg_len, 0);
 }
+int platform_readable(pcon_handle* con, u32 timeout){
+    // TODO: Using this just for timeout of reading.
+    // TODO: Potentially expand to be a proper select function.
+    // TODO: Use poll() function instead.
+    fd_set set;
+    FD_ZERO(&set);
+    set.fd_count = 1;
+    set.fd_array[0] = con->sock;
+    struct timeval t;
+    t.tv_sec = timeout / 1000;
+    t.tv_usec = ( timeout - t.tv_sec * 1000 ) * 1000;
+    return select(0, &set, 0, 0, &t);
+}
 u32 platform_read(pcon_handle* con, char* buf, u32 buf_len) {
+    // Return read info instead.
     return recv(con->sock, buf, buf_len, 0);
 }
 void platform_close(pcon_handle* con) {
@@ -229,18 +243,30 @@ typedef struct asyn_read_info {
     pcon_handle* ccon_handle;
     u32 bytes_to_read;
     void (*handler)(read_info*);
+    u32 timeout_milliseconds;
 } async_read_info;
 DWORD WINAPI __async_read(void* info){
     
     async_read_info* arInfo = (async_read_info*) info;
     
+    u32 readable_result = platform_readable(arInfo->ccon_handle, arInfo->timeout_milliseconds);
+    if(readable_result == SOCKET_ERROR || readable_result == 0){
+        platform_close(arInfo->ccon_handle);
+        free(arInfo);
+        return 0;
+    }
+    
     read_info* ri = malloc(sizeof(read_info));
     ri->buffer = calloc(arInfo->bytes_to_read + 1, sizeof(char));
+    ri->buffer_size = arInfo->bytes_to_read;
     ri->ccon_handle = arInfo->ccon_handle;
     ri->bytes_read = platform_read(arInfo->ccon_handle, ri->buffer, arInfo->bytes_to_read);
     
     ri->eof = (ri->bytes_read == 0);
     ri->force_closed = (ri->bytes_read == -1);
+    
+    //TODO: Who should own the read_info? This function or the read_handler?
+    //TODO: Currently this function owns the read_info struct.
     
     arInfo->handler(ri);
     free(ri->buffer);
@@ -248,13 +274,19 @@ DWORD WINAPI __async_read(void* info){
     free(arInfo);
     return 0;
 }
-bool platform_async_read(pcon_handle* ccon_handle, u32 bytes_to_read, void (*handler)(read_info* info)) {
+bool platform_async_read(pcon_handle* ccon_handle, u32 bytes_to_read, void (*handler)(read_info* info), u32 timeout) {
+    
+    //TODO: Potentially create a memory-pool for the bytes read.
+    //TODO: This would make me have standard sizes for bytes to read.
     
     // async_read_info will be freed in the __async_read function.
     async_read_info* arInfo = malloc(sizeof(async_read_info));
     arInfo->bytes_to_read = bytes_to_read;
     arInfo->ccon_handle = ccon_handle;
     arInfo->handler = handler;
+    arInfo->timeout_milliseconds = timeout;
+    
+    //TODO: Implement memory pool.
     
     DWORD thread_id;
     HANDLE thread_handle = CreateThread(NULL, 0, __async_read, arInfo, 0, &thread_id);
