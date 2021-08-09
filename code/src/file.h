@@ -46,7 +46,7 @@ bool file_close(FILE* file);
 bool file_copy(char** copy, const char* file_name);
 
 // Copies a range of bytes of a file into a buffer.
-bool file_copy_range(char** copy, const char* file_name, u32 byte_start, u32 byte_end);
+u64 file_copy_range(char** copy, const char* file_name, u32 byte_start, u32 byte_end);
 
 // Returns the size of a file pointed to by the file handle.
 u64 file_size(FILE* file);

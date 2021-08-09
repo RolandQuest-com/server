@@ -1,6 +1,7 @@
 #pragma once
 
 #include "defines.h"
+#include "buffer.h"
 #include "header.h"
 #include "http_const.h"
 
@@ -23,4 +24,4 @@ typedef struct request_packet {
     request_state pstate;
 } request_packet;
 
-request_state request_parse(char* data, u32 size, request_packet* packet);
+request_state request_parse(char_buffer* cbuf, request_packet* packet);

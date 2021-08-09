@@ -12,6 +12,11 @@
 
 #include "file.h"
 
+const char* root_path = "C:/Users/Paul/Documents/_Projects/rolandquest.com/html/";
+u32 root_path_len = 55;
+const char* index_html = "entryTest.html";
+u32 index_html_len = 14;
+
 const u32 buf_len = 2048;
 
 void onClientConnect(pcon_handle* client){
@@ -24,25 +29,52 @@ void onClientDisconnect(pcon_handle* client){
     
 }
 
-char* construct(char* contents){
+typedef struct construct_ret {
+    char* ret;
+    u32 bytes;
+} construct_ret;
+
+construct_ret construct_favicon(char* contents, u32 content_length){
     
-    const static char* testResponse = "HTTP/1.1 200 OK\nContent-Length: ";
+    construct_ret ret;
     
-    u32 content_length = strlen(contents);
+    const static char* testResponse = "HTTP/1.1 200 OK\ncontent-type: image/x-icon\nContent-Length: ";
+    
     char content_length_str[20];
     sprintf(content_length_str, "%d", content_length);
     
-    char* toSend = malloc(strlen(testResponse) + strlen(content_length_str) + 2 + content_length);
-    memcpy(toSend, testResponse, strlen(testResponse));
-    memcpy(toSend + strlen(testResponse), content_length_str, strlen(content_length_str));
-    toSend[strlen(testResponse) + strlen(content_length_str)] = '\n';
-    toSend[strlen(testResponse) + strlen(content_length_str) + 1] = '\n';
+    ret.ret = malloc(strlen(testResponse) + strlen(content_length_str) + 2 + content_length);
+    memcpy(ret.ret, testResponse, strlen(testResponse));
+    memcpy(ret.ret + strlen(testResponse), content_length_str, strlen(content_length_str));
+    ret.ret[strlen(testResponse) + strlen(content_length_str)] = '\n';
+    ret.ret[strlen(testResponse) + strlen(content_length_str) + 1] = '\n';
     
     // Gotta be a better way of doing this.
     // strerrorlen_s doesn't work? =/
-    memcpy(toSend + strlen(testResponse) + strlen(content_length_str) + 2, contents, content_length);
+    memcpy(ret.ret + strlen(testResponse) + strlen(content_length_str) + 2, contents, content_length);
+    ret.bytes = strlen(testResponse) + strlen(content_length_str) + 2 + content_length;
+    return ret;
+}
+construct_ret construct(char* contents, u32 content_length){
     
-    return toSend;
+    construct_ret ret;
+    
+    const static char* testResponse = "HTTP/1.1 200 OK\nContent-Length: ";
+    
+    char content_length_str[20];
+    sprintf(content_length_str, "%d", content_length);
+    
+    ret.ret = malloc(strlen(testResponse) + strlen(content_length_str) + 2 + content_length);
+    memcpy(ret.ret, testResponse, strlen(testResponse));
+    memcpy(ret.ret + strlen(testResponse), content_length_str, strlen(content_length_str));
+    ret.ret[strlen(testResponse) + strlen(content_length_str)] = '\n';
+    ret.ret[strlen(testResponse) + strlen(content_length_str) + 1] = '\n';
+    
+    // Gotta be a better way of doing this.
+    // strerrorlen_s doesn't work? =/
+    memcpy(ret.ret + strlen(testResponse) + strlen(content_length_str) + 2, contents, content_length);
+    ret.bytes = strlen(testResponse) + strlen(content_length_str) + 2 + content_length;
+    return ret;
 }
 
 void read_handler(read_info* info){
@@ -62,48 +94,66 @@ void read_handler(read_info* info){
     
     //NOTE: Need to set packet using {0} so the state is FRESH.
     request_packet p = { 0 };
-    request_state s = request_parse(info->buffer, info->bytes_read, &p);
+    request_state s = request_parse(&info->buf, &p);
     
     while(s == INCOMPLETE){
-        platform_read(info->ccon_handle, info->buffer, info->buffer_size);
-        s = request_parse(info->buffer, info->bytes_read, &p);
+        info->buf.data_pos = 0;
+        info->buf.data_len = platform_read(info->ccon_handle, info->buf.buffer, info->buf.buffer_size);
+        s = request_parse(&info->buf, &p);
     }
     
     if(s == MALFORMED){
-        // Send error.
-    }
-    if(s == COMPLETE){
-        // Handle packet.
+        LogError("MALFORMED");
+        LogInfo("Bytes read: %u", info->buf.data_len);
+        LogInfo("\n%s", info->buf.buffer);
         return;
     }
-    if(s == INCOMPLETE){
-        
+    
+    //NOTE: Try to read again for another request.
+    platform_async_read(info->ccon_handle, 2048, read_handler, 4000);
+    
+    LogInfo("Bytes read: %u", info->buf.data_len);
+    LogInfo("\n%s", info->buf.buffer);
+    
+    u32 req_path_len = strlen(p.request_path);
+    u32 total_path_len = root_path_len;
+    total_path_len += (index_html_len > req_path_len) ? index_html_len : req_path_len;
+    
+    char* full_path;
+    full_path = calloc(1, total_path_len);
+    memcpy(full_path, root_path, root_path_len);
+    
+    if(strcmp(p.request_path,"/") == 0){
+        memcpy(full_path + root_path_len, index_html, index_html_len);
+    }
+    else{
+        memcpy(full_path + root_path_len, p.request_path, req_path_len);
     }
     
-    // COMPLETE OR NEED_MORE_CONTENT
+    char* copy = NULL;
+    u32 bytes_copied = file_copy_range(&copy, full_path, 0, -1);
     
-    /*
-    while(s.pstate != COMPLETE){
-        // WARNING: The byte after bytes_read is not guaranteed to be '\0'.
-        u32 bytes_read = platform_read(info->ccon_handle, info->buffer, info->buffer_size);
-        request_parse(info->buffer, bytes_read, &p, &s);
+    construct_ret ret;
+    if(strcmp(p.request_path, "/favicon.ico") == 0){
+        ret = construct_favicon(copy, bytes_copied);
     }
-    */
-    
-    LogInfo("Bytes read: %u", info->bytes_read);
-    LogInfo("\n%s", info->buffer);
-    
-    if(info->bytes_read < buf_len - 1){
-        char* copy = NULL;
-        file_copy_range(&copy, "C:\\Users\\Paul\\Documents\\_Projects\\rolandquest.com\\html\\entryTest.html", 0, -1);
-        
-        char* toSend = construct(copy);
-        platform_send(info->ccon_handle, toSend, strlen(toSend));
-        free(toSend);
-        free(copy);
+    else{
+        ret = construct(copy, bytes_copied);
     }
     
+    platform_send(info->ccon_handle, ret.ret, ret.bytes);
+    free(ret.ret);
+    free(copy);
 }
+
+//TODO:
+//TODO:
+//TODO: 3x to-do so you know I'm serious.
+//TODO: Create a fleshed out buffer struct that all functions take.
+//TODO: This will clean up the interface between them.
+
+
+
 int main(){
     
     platform_startup();

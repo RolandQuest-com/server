@@ -1,6 +1,7 @@
 #pragma once
 
 #include "defines.h"
+#include "buffer.h"
 
 //TODO: Potentially break this file up.
 //TODO: Seems to be a lot of functionality in a single header.
@@ -96,9 +97,7 @@ bool platform_async_accept(pcon_handle* scon_handle, void (*handler)(accept_info
 // Info passed to the handler of a 'platform_async_read' handler.
 typedef struct read_info {
     pcon_handle* ccon_handle;
-    char* buffer;
-    u32 buffer_size;
-    u32 bytes_read;
+    char_buffer buf;
     bool eof;
     bool force_closed;
 } read_info;

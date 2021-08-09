@@ -257,19 +257,20 @@ DWORD WINAPI __async_read(void* info){
     }
     
     read_info* ri = malloc(sizeof(read_info));
-    ri->buffer = calloc(arInfo->bytes_to_read + 1, sizeof(char));
-    ri->buffer_size = arInfo->bytes_to_read;
     ri->ccon_handle = arInfo->ccon_handle;
-    ri->bytes_read = platform_read(arInfo->ccon_handle, ri->buffer, arInfo->bytes_to_read);
+    ri->buf.buffer = calloc(arInfo->bytes_to_read + 1, sizeof(char));
+    ri->buf.buffer_size = arInfo->bytes_to_read;
+    ri->buf.data_pos = 0;
+    ri->buf.data_len = platform_read(arInfo->ccon_handle, ri->buf.buffer, arInfo->bytes_to_read);
     
-    ri->eof = (ri->bytes_read == 0);
-    ri->force_closed = (ri->bytes_read == -1);
+    ri->eof = (ri->buf.data_len == 0);
+    ri->force_closed = (ri->buf.data_len == -1);
     
     //TODO: Who should own the read_info? This function or the read_handler?
     //TODO: Currently this function owns the read_info struct.
     
     arInfo->handler(ri);
-    free(ri->buffer);
+    free(ri->buf.buffer);
     free(ri);
     free(arInfo);
     return 0;

@@ -25,25 +25,25 @@ bool file_close(FILE* file){
 bool file_copy(char** copy, const char* file_name){
     return file_copy_range(copy, file_name, 0, -1);
 }
-bool file_copy_range(char** copy, const char* file_name, u32 byte_start, u32 byte_end){
+u64 file_copy_range(char** copy, const char* file_name, u32 byte_start, u32 byte_end){
     
     // Lots of places this can fail with no error catching.
     // TODO: Implement error handling.
     
     if(byte_end < byte_start){
-        return false;
+        return -1;
     }
     
     FILE* file;
     if(!file_open(&file, file_name, "r")){
-        return false;
+        return -1;
     }
     
     u64 file_length = file_size(file);
     
     if(byte_start > file_length - 1){
         fclose(file);
-        return false;
+        return -1;
     }
     if(byte_end > file_length - 1){
         byte_end = file_length - 1;
@@ -56,7 +56,7 @@ bool file_copy_range(char** copy, const char* file_name, u32 byte_start, u32 byt
     size_t char_read = fread(*copy, sizeof(char), bytes_to_read, file);
     (*copy)[char_read] = '\0';
     fclose(file);
-    return true;
+    return char_read;
 }
 u64 file_size(FILE* file){
     u64 current_pos = ftell(file);
