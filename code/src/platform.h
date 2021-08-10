@@ -1,7 +1,7 @@
 #pragma once
 
 #include "defines.h"
-#include "buffer.h"
+#include "char_buffer.h"
 
 //TODO: Potentially break this file up.
 //TODO: Seems to be a lot of functionality in a single header.
@@ -104,6 +104,7 @@ typedef struct read_info {
 
 // Calls 'read' on a newly created thread.
 // 'handler' is called when 'read' returns.
+// 'handler' assumes ownership of 'ccon_handle' of the accept_info struct.
 // TOOD: Pass error info to handler.
 bool platform_async_read(pcon_handle* ccon_handle, u32 bytes_to_read, void (*handler)(read_info* info), u32 timeout);
 

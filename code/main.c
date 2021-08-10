@@ -152,8 +152,6 @@ void read_handler(read_info* info){
 //TODO: Create a fleshed out buffer struct that all functions take.
 //TODO: This will clean up the interface between them.
 
-
-
 int main(){
     
     platform_startup();

@@ -1,4 +1,4 @@
-#include "buffer.h"
+#include "char_buffer.h"
 
 char_buffer sb_create(char* buf, u32 size, u32 len){
     char_buffer ret = {

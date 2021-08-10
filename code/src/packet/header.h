@@ -3,6 +3,8 @@
 #include "defines.h"
 #include "http_const.h"
 
+extern const char* const HTTP_HEADER_CONTENT_LENGTH;
+
 typedef struct http_header {
     char head[MAX_HEADER_LENGTH + 1];
     char body[MAX_HEADER_LENGTH + 1];

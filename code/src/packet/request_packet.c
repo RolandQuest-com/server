@@ -1,5 +1,6 @@
 #include "request_packet.h"
 
+#include "stdlib.h"
 #include "string.h"
 
 const char* __find_method(char* buffer){
@@ -109,12 +110,30 @@ request_state __extract_headers(char_buffer* cbuf, request_packet* packet){
     
     return COMPLETE;
 }
-
+request_state __extract_content(char_buffer* cbuf, request_packet* packet){
+    //TODO: Implement chunked content.
+    
+    const char* value = header_val_s(&packet->headers, HTTP_HEADER_CONTENT_LENGTH);
+    if(value == NULL){
+        return MALFORMED;
+    }
+    char* temp;
+    u64 content_length = strtoul(value, temp, 10);
+    if(content_length == 0){
+        return MALFORMED;
+    }
+    
+    //TODO: Potentially put limits on amount of data that can be sent.
+    packet->content = malloc(content_length);
+    
+    u32 cbuf_remaining = cbuf->data_len - cbuf->data_pos;
+    u32 to_copy = cbuf_remaining > content_length ? content_length : cbuf_remaining;
+    memcpy(packet->content, cbuf->buffer + cbuf->data_pos, to_copy);
+    return COMPLETE;
+}
 
 //NOTE: Will return MALFORMED if all headers are not provided.
 //NOTE: Content data can be done piecemeal.
-//TODO: Read content data.
-//TODO: Handle chunked content data.
 request_state request_parse(char_buffer* cbuf, request_packet* packet){
     
     if(packet->pstate == MALFORMED || packet->pstate == COMPLETE){
@@ -131,6 +150,12 @@ request_state request_parse(char_buffer* cbuf, request_packet* packet){
         }
     }
     
-    //__extract_content();
+    //TODO: What if not all content is sent in first read?
+    if(packet->http_method == HTTP_METHOD_POST){
+        if(__extract_content(cbuf, packet) == MALFORMED){
+            return MALFORMED;
+        }
+    }
+    
     return COMPLETE;
 }

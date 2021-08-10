@@ -1,7 +1,7 @@
 #pragma once
 
 #include "defines.h"
-#include "buffer.h"
+#include "char_buffer.h"
 #include "header.h"
 #include "http_const.h"
 

@@ -2,6 +2,8 @@
 
 #include "string.h"
 
+const char* const HTTP_HEADER_CONTENT_LENGTH = "content-length";
+
 u32 header_find(header_group* group, char* head){
     for(int i = 0; i < group->count; i++){
         if(strcmp(group->headers[i].head, head) == 0){

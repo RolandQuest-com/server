@@ -34,6 +34,7 @@ bool platform_startup(){
 }
 void platform_shutdown(){
     if(_wsaInitialized){
+        CloseHandle(_mutex);
         WSACleanup();
         _wsaInitialized = false;
     }
@@ -268,6 +269,7 @@ DWORD WINAPI __async_read(void* info){
     
     //TODO: Who should own the read_info? This function or the read_handler?
     //TODO: Currently this function owns the read_info struct.
+    //TODO: I'm thinking this function shouldn't own anything unless it's strictly internal... kind of gross.
     
     arInfo->handler(ri);
     free(ri->buf.buffer);
