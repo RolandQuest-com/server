@@ -4,7 +4,7 @@
 
 const char* const HTTP_HEADER_CONTENT_LENGTH = "content-length";
 
-u32 header_find(header_group* group, char* head){
+u32 header_find(header_group* group, const char* const head){
     for(int i = 0; i < group->count; i++){
         if(strcmp(group->headers[i].head, head) == 0){
             return i;
@@ -13,7 +13,7 @@ u32 header_find(header_group* group, char* head){
     return -1;
 }
 
-const char*  header_val_s(header_group* group, char* head){
+const char*  header_val_s(header_group* group, const char* const head){
     u32 i = header_find(group, head);
     if (i == -1){
         return NULL;

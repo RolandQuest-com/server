@@ -15,8 +15,8 @@ typedef struct header_group {
     u32 count;
 } header_group;
 
-u32 header_find(header_group* group, char* head);
-const char* header_val_s(header_group* group, char* head);
+u32 header_find(header_group* group, const char* const head);
+const char* header_val_s(header_group* group, const char* const head);
 const char* header_val_u(header_group* group, u32 head);
 //u32 header_len(header_group* group);
 

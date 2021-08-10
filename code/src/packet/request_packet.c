@@ -118,7 +118,7 @@ request_state __extract_content(char_buffer* cbuf, request_packet* packet){
         return MALFORMED;
     }
     char* temp;
-    u64 content_length = strtoul(value, temp, 10);
+    u64 content_length = strtoul(value, &temp, 10);
     if(content_length == 0){
         return MALFORMED;
     }
